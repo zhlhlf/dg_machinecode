@@ -34,6 +34,7 @@ jobs:
         with:
           name: get_machinecode-${{ matrix.os }}-${{ matrix.arch }}
           path: get_machinecode-${{ matrix.os }}-${{ matrix.arch }}
+          if-no-files-found: warn
 
   release:
     needs: build
@@ -49,10 +50,7 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            artifacts/get_machinecode-linux-amd64
-            artifacts/get_machinecode-linux-arm64
-            artifacts/get_machinecode-windows-amd64.exe
+          files: artifacts/**/get_machinecode-*
           tag_name: ${{ github.sha }}
           name: Release ${{ github.sha }}
           body: |
