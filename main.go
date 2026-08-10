@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"bytes"
@@ -108,54 +108,64 @@ type extraData struct {
 // ---- machine code ----
 
 func getUUID() string {
-	uuid := getLinuxUUID()
-	if uuid != "" {
+	if uuid := getLinuxUUID(); uuid != "" {
 		return uuid
 	}
-	return getMacUUID()
-}
-
-func getLinuxUUID() string {
-	data, err := os.ReadFile("/sys/class/dmi/id/product_uuid")
-	if err == nil {
-		uuid := strings.TrimSpace(string(data))
-		uuid = strings.ReplaceAll(uuid, "-", "")
-		return strings.ToLower(uuid)
+	if uuid := getMachineID(); uuid != "" {
+		return uuid
 	}
-	data, err = os.ReadFile("/etc/machine-id")
-	if err == nil {
-		uuid := strings.TrimSpace(string(data))
-		uuid = strings.ReplaceAll(uuid, "-", "")
-		return strings.ToLower(uuid)
+	if uuid := getMacUUID(); uuid != "" {
+		return uuid
 	}
 	return ""
 }
 
-func getMacUUID() string {
-	out, err := exec.Command("sysctl", "-n", "hw.uuid").Output()
+func getLinuxUUID() string {
+	var uuid_code string
+	// try DMI product UUID
+	data, err := os.ReadFile("/sys/class/dmi/id/product_uuid")
 	if err == nil {
-		uuid := strings.TrimSpace(string(out))
-		uuid = strings.ReplaceAll(uuid, "-", "")
-		return strings.ToLower(uuid)
+		uuid_code = strings.ToLower(strings.Join(strings.Split(strings.TrimSpace(string(data)), "-"), ""))
+	} else {
+		// fallback with sudo
+		out, err := exec.Command("sh", "-c", `sudo cat /sys/class/dmi/id/product_uuid`).Output()
+		if err == nil {
+			uuid_code = strings.ToLower(strings.Join(strings.Split(strings.TrimSpace(string(out)), "-"), ""))
+		}
 	}
-	cmd := `ioreg -rd1 -c IOPlatformExpertDevice | grep -E '(UUID)'`
-	out, err = exec.Command("sh", "-c", cmd).Output()
+	return uuid_code
+}
+
+func getMachineID() string {
+	var uuid_code string
+	data, err := os.ReadFile("/etc/machine-id")
 	if err == nil {
-		lines := strings.Split(string(out), "\n")
-		for _, line := range lines {
-			if strings.Contains(line, "UUID") {
-				parts := strings.Split(line, "=")
-				if len(parts) > 1 {
-					uuid := strings.TrimSpace(strings.Trim(parts[1], "\""))
-					uuid = strings.ReplaceAll(uuid, "-", "")
-					return strings.ToLower(uuid)
-				}
+		uuid_code = strings.ToLower(strings.Join(strings.Split(strings.TrimSpace(string(data)), "-"), ""))
+	} else {
+		out, err := exec.Command("sh", "-c", `sudo cat /etc/machine-id`).Output()
+		if err == nil {
+			uuid_code = strings.ToLower(strings.Join(strings.Split(strings.TrimSpace(string(out)), "-"), ""))
+		}
+	}
+	return uuid_code
+}
+
+func getMacUUID() string {
+	cmd := `sudo ioreg -rd1 -c IOPlatformExpertDevice | grep -E '(UUID)'`
+	out, err := exec.Command("sh", "-c", cmd).Output()
+	if err == nil {
+		s := strings.TrimSpace(string(out))
+		if s != "" {
+			parts := strings.Split(s, `"`)
+			if len(parts) >= 2 {
+				uuid := parts[len(parts)-2]
+				uuid = strings.ToLower(strings.Join(strings.Split(uuid, "-"), ""))
+				return uuid
 			}
 		}
 	}
 	return ""
 }
-
 // ---- license ----
 
 func deriveKeyIV(password string) ([]byte, []byte) {
