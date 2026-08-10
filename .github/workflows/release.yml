@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+          - os: linux
+            arch: arm64
+          - os: windows
+            arch: amd64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Build binary
+        run: |
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o get_machinecode-${{ matrix.os }}-${{ matrix.arch }} main.go
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: get_machinecode-${{ matrix.os }}-${{ matrix.arch }}
+          path: get_machinecode-${{ matrix.os }}-${{ matrix.arch }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/get_machinecode-linux-amd64
+            artifacts/get_machinecode-linux-arm64
+            artifacts/get_machinecode-windows-amd64.exe
+          tag_name: ${{ github.sha }}
+          tag: ${{ github.sha }}
+          name: Release ${{ github.sha }}
+          body: |
+            Go binaries for linux amd64, arm64 and windows amd64
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
