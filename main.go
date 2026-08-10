@@ -413,5 +413,5 @@ func main() {
 		os.Exit(1)
 	}
 	h := md5.Sum([]byte(uuid + secret))
-	os.Stdout.WriteString(hex.EncodeToString(h[:]))
+	fmt.Println(hex.EncodeToString(h[:]))
 }
