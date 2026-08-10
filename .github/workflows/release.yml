@@ -54,7 +54,6 @@ jobs:
             artifacts/get_machinecode-linux-arm64
             artifacts/get_machinecode-windows-amd64.exe
           tag_name: ${{ github.sha }}
-          tag: ${{ github.sha }}
           name: Release ${{ github.sha }}
           body: |
             Go binaries for linux amd64, arm64 and windows amd64
